@@ -33,6 +33,8 @@
 .DS_Store
 Thumbs.db
 sysinfo.txt
+__MACOSX/
+
 
 ############################################
 # Package caches (usually safe to ignore)
