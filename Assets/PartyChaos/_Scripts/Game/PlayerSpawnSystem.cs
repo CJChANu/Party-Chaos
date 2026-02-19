@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace PartyChaos.Game
 {
-    public class PlayerSpawnSystem : NetworkBehaviour
+    public class PlayerSpawnSystem : MonoBehaviour
     {
         [Header("Spawn Points")]
         public List<Transform> spawnPoints = new();
@@ -19,67 +19,70 @@ namespace PartyChaos.Game
         private void Awake()
         {
             // Auto-find ALL SpawnPoint objects in scene
-            var allSpawnPoints = FindObjectsOfType<SpawnPoint>();
+            spawnPoints.Clear();
+            var allSpawnPoints = FindObjectsOfType<SpawnPoint>(true);
             foreach (var sp in allSpawnPoints)
-            {
                 spawnPoints.Add(sp.transform);
-            }
 
             Debug.Log($"PlayerSpawnSystem: Found {spawnPoints.Count} spawn points at:");
             for (int i = 0; i < spawnPoints.Count; i++)
-            {
                 Debug.Log($"  {i}: {spawnPoints[i].name} = {spawnPoints[i].position}");
-            }
         }
 
-        public override void OnNetworkSpawn()
+        private void OnEnable()
         {
-            if (!IsServer) return;
+            if (NetworkManager.Singleton == null) return;
 
-            Debug.Log("PlayerSpawnSystem: SERVER starting - will spawn all players");
-
+            NetworkManager.Singleton.OnServerStarted += OnServerStarted;
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        }
 
-            // Spawn all already-connected clients (including host)
+        private void OnDisable()
+        {
+            if (NetworkManager.Singleton == null) return;
+
+            NetworkManager.Singleton.OnServerStarted -= OnServerStarted;
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        }
+
+        private void OnServerStarted()
+        {
+            if (!NetworkManager.Singleton.IsServer) return;
+
+            Debug.Log("PlayerSpawnSystem: Server started - placing already connected players");
+
             foreach (var clientId in NetworkManager.Singleton.ConnectedClientsIds)
-            {
-                SpawnPlayerNow(clientId);
-            }
+                StartCoroutine(PlaceWhenReady(clientId));
         }
 
         private void OnClientConnected(ulong clientId)
         {
-            if (!IsServer) return;
-            Debug.Log($"PlayerSpawnSystem: New client {clientId} - spawning immediately");
-            SpawnPlayerNow(clientId);
+            if (!NetworkManager.Singleton.IsServer) return;
+
+            Debug.Log($"PlayerSpawnSystem: Client connected {clientId} - placing player");
+            StartCoroutine(PlaceWhenReady(clientId));
         }
 
-        private void SpawnPlayerNow(ulong clientId)
+        private IEnumerator PlaceWhenReady(ulong clientId)
         {
-            StartCoroutine(SpawnPlayerCoroutine(clientId));
-        }
+            // Wait until player object exists
+            float timeout = 3f;
+            float t = 0f;
 
-        private IEnumerator SpawnPlayerCoroutine(ulong clientId)
-        {
-            // Wait 1 frame for PlayerObject to be created
-            yield return null;
-
-            if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
+            while (t < timeout)
             {
-                Debug.LogWarning($"PlayerSpawnSystem: Client {clientId} not found");
-                yield break;
+                if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
+                    client.PlayerObject != null)
+                {
+                    TeleportPlayer(client.PlayerObject);
+                    yield break;
+                }
+
+                t += Time.unscaledDeltaTime;
+                yield return null;
             }
 
-            if (client.PlayerObject == null)
-            {
-                Debug.LogWarning($"PlayerSpawnSystem: No PlayerObject for client {clientId}");
-                yield break;
-            }
-
-            var playerObj = client.PlayerObject;
-            Debug.Log($"PlayerSpawnSystem: Spawning {playerObj.name} (client {clientId})");
-
-            TeleportPlayer(playerObj);
+            Debug.LogWarning($"PlayerSpawnSystem: Timed out waiting for PlayerObject for client {clientId}");
         }
 
         private void TeleportPlayer(NetworkObject playerObj)
@@ -90,7 +93,6 @@ namespace PartyChaos.Game
                 return;
             }
 
-            // Pick spawn point
             Transform sp;
             if (useRandomSpawn)
                 sp = spawnPoints[Random.Range(0, spawnPoints.Count)];
@@ -103,9 +105,9 @@ namespace PartyChaos.Game
             Vector3 targetPos = sp.position;
             Quaternion targetRot = sp.rotation;
 
-            Debug.Log($"PlayerSpawnSystem: Moving {playerObj.name} from {playerObj.transform.position} to {targetPos}");
+            Debug.Log($"PlayerSpawnSystem: Moving {playerObj.name} to {sp.name} -> {targetPos}");
 
-            // Reset physics FIRST
+            // Reset physics first
             var rb = playerObj.GetComponent<Rigidbody>();
             if (rb != null)
             {
@@ -116,26 +118,22 @@ namespace PartyChaos.Game
                 rb.Sleep();
             }
 
-            // Set transform
             playerObj.transform.SetPositionAndRotation(targetPos, targetRot);
 
-            // Network sync
+            // Best option: server-side NetworkTransform teleport
             var nt = playerObj.GetComponent<NetworkTransform>();
-            var receiver = playerObj.GetComponent<PlayerSpawnReceiver>();
-
             if (nt != null)
             {
                 nt.Teleport(targetPos, targetRot, playerObj.transform.localScale);
-                Debug.Log($"PlayerSpawnSystem: NetworkTransform teleport to {targetPos}");
-            }
-            else if (receiver != null)
-            {
-                receiver.TeleportOwnerClientRpc(targetPos, targetRot);
-                Debug.Log($"PlayerSpawnSystem: ClientRpc teleport to {targetPos}");
             }
             else
             {
-                Debug.LogWarning("PlayerSpawnSystem: No NetworkTransform OR PlayerSpawnReceiver!");
+                // fallback: owner client rpc if you keep PlayerSpawnReceiver
+                var receiver = playerObj.GetComponent<PlayerSpawnReceiver>();
+                if (receiver != null)
+                    receiver.TeleportOwnerClientRpc(targetPos, targetRot);
+                else
+                    Debug.LogWarning("PlayerSpawnSystem: No NetworkTransform or PlayerSpawnReceiver found.");
             }
         }
     }
