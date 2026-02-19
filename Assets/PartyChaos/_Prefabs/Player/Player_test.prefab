@@ -84,6 +84,7 @@ GameObject:
   - component: {fileID: 3191103577542128899}
   - component: {fileID: 4163302647693711668}
   - component: {fileID: 4793462528601788296}
+  - component: {fileID: 7431495991110681626}
   m_Layer: 7
   m_Name: Player_test
   m_TagString: Untagged
@@ -403,6 +404,19 @@ MonoBehaviour:
   UseRigidBodyForMotion: 0
   AutoUpdateKinematicState: 1
   AutoSetKinematicOnDespawn: 1
+--- !u!114 &7431495991110681626
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6577261470262490214}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30d8c5d4f19f242938654062ccecc130, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyChaos.Game.PlayerSpawnReceiver
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1 &8796168701419045172
 GameObject:
   m_ObjectHideFlags: 0
