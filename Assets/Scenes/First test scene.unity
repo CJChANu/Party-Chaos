@@ -1820,12 +1820,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5e74dbb4c5024baa9be8272ee074598, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PartyChaos.Game.PlayerSpawnSystem
-  ShowTopMostFoldoutHeaderGroup: 1
-  spawnPoints:
-  - {fileID: 1526862984}
-  - {fileID: 198329158}
-  - {fileID: 2050317305}
-  useRandomSpawn: 0
+  spawnPoints: []
+  useRandomSpawn: 1
 --- !u!4 &1109684632
 Transform:
   m_ObjectHideFlags: 0
@@ -2307,7 +2303,7 @@ MonoBehaviour:
   m_DisconnectTimeoutMS: 30000
   ConnectionData:
     Address: 127.0.0.1
-    Port: 7777
+    Port: 7778
     ServerListenAddress: 127.0.0.1
     ClientBindPort: 0
   DebugSimulator:
@@ -2766,9 +2762,9 @@ SceneRoots:
   - {fileID: 190766950}
   - {fileID: 1489254588}
   - {fileID: 1109684632}
-  - {fileID: 95575821}
-  - {fileID: 549739710}
-  - {fileID: 1304684031}
   - {fileID: 1526862984}
   - {fileID: 198329158}
   - {fileID: 2050317305}
+  - {fileID: 95575821}
+  - {fileID: 549739710}
+  - {fileID: 1304684031}
